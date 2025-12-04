@@ -283,7 +283,3 @@ public struct MerkleProofNode {
         self.isLeft = isLeft
     }
 }
-
-// Import hash algorithm
-import Foundation
-
