@@ -160,6 +160,12 @@ else
         }
     fi
     cd "$CLONE_DIR"
+    
+    # Configure remote URL with token for pushing (if in GitHub Actions)
+    if [ -n "$GITHUB_ACTIONS" ] && [ -n "$GITHUB_TOKEN" ]; then
+        echo "Configuring remote URL with authentication..."
+        git remote set-url origin "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_PAGES_REPO}.git"
+    fi
 fi
 
 # Determine the documentation directory
