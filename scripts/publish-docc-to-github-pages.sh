@@ -78,6 +78,9 @@ cd "$REPO_ROOT"
 # Resolve package dependencies first
 swift package resolve
 
+# Convert package name to lowercase (bash 3.2 compatible)
+PACKAGE_NAME_LOWER=$(echo "$PACKAGE_NAME" | tr '[:upper:]' '[:lower:]')
+
 # Generate documentation using swift package generate-documentation
 # This requires the swift-docc-plugin to be added to Package.swift
 if swift package --allow-writing-to-directory "$DOCBUILD_DIR" \
@@ -85,7 +88,7 @@ if swift package --allow-writing-to-directory "$DOCBUILD_DIR" \
     --target "$PACKAGE_NAME" \
     --output-path "$DOCBUILD_DIR" \
     --transform-for-static-hosting \
-    --hosting-base-path "/${PACKAGE_NAME,,}" 2>&1; then
+    --hosting-base-path "/${PACKAGE_NAME_LOWER}" 2>&1; then
     echo -e "${GREEN}DocC documentation generated successfully${NC}"
     
     # The documentation is already transformed for static hosting in DOCBUILD_DIR
@@ -161,7 +164,7 @@ fi
 
 # Determine the documentation directory
 # For Swift packages, we'll publish to a subdirectory like /designalgorithmskit/
-DOCS_DIR="${PACKAGE_NAME,,}"  # Convert to lowercase
+DOCS_DIR="$PACKAGE_NAME_LOWER"  # Use lowercase version
 mkdir -p "$DOCS_DIR"
 
 echo "Using documentation directory: $DOCS_DIR"
@@ -190,10 +193,10 @@ if [ -n "$STATIC_DOCS_DIR" ] && [ -d "$STATIC_DOCS_DIR" ]; then
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="0; url=/${DOCS_DIR}/documentation/${PACKAGE_NAME,,}/">
+    <meta http-equiv="refresh" content="0; url=/${DOCS_DIR}/documentation/${PACKAGE_NAME_LOWER}/">
     <title>${PACKAGE_NAME} Documentation</title>
     <script>
-        window.location.href = "/${DOCS_DIR}/documentation/${PACKAGE_NAME,,}/";
+        window.location.href = "/${DOCS_DIR}/documentation/${PACKAGE_NAME_LOWER}/";
     </script>
 </head>
 <body>
