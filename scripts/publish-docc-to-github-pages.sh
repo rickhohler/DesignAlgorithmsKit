@@ -71,76 +71,34 @@ DOCBUILD_DIR="${REPO_ROOT}/.docbuild"
 rm -rf "$DOCBUILD_DIR"
 mkdir -p "$DOCBUILD_DIR"
 
-# Build documentation using xcodebuild docbuild
-echo "Building documentation with xcodebuild..."
+# Generate documentation using Swift DocC Plugin
+echo "Generating documentation with Swift DocC Plugin..."
 cd "$REPO_ROOT"
 
 # Resolve package dependencies first
 swift package resolve
 
-# Try to build documentation - for Swift packages, we need to open it as a package
-# First try with an Xcode project if it exists
-if [ -f "${PACKAGE_NAME}.xcodeproj/project.pbxproj" ]; then
-    echo "Using existing Xcode project..."
-    BUILD_CMD="xcodebuild docbuild -scheme ${PACKAGE_NAME} -derivedDataPath ${DOCBUILD_DIR} -destination 'generic/platform=macOS'"
-elif [ -f "${PACKAGE_NAME}.xcworkspace/contents.xcworkspacedata" ]; then
-    echo "Using existing Xcode workspace..."
-    BUILD_CMD="xcodebuild docbuild -workspace ${PACKAGE_NAME}.xcworkspace -scheme ${PACKAGE_NAME} -derivedDataPath ${DOCBUILD_DIR} -destination 'generic/platform=macOS'"
-else
-    echo "No Xcode project found, generating one..."
-    # Try to generate Xcode project (may not be available in newer Swift versions)
-    swift package generate-xcodeproj 2>/dev/null || {
-        echo "Note: generate-xcodeproj not available, will try opening package directly..."
-    }
+# Generate documentation using swift package generate-documentation
+# This requires the swift-docc-plugin to be added to Package.swift
+if swift package --allow-writing-to-directory "$DOCBUILD_DIR" \
+    generate-documentation \
+    --target "$PACKAGE_NAME" \
+    --output-path "$DOCBUILD_DIR" \
+    --transform-for-static-hosting \
+    --hosting-base-path "/${PACKAGE_NAME,,}" 2>&1; then
+    echo -e "${GREEN}DocC documentation generated successfully${NC}"
     
-    if [ -f "${PACKAGE_NAME}.xcodeproj/project.pbxproj" ]; then
-        BUILD_CMD="xcodebuild docbuild -scheme ${PACKAGE_NAME} -derivedDataPath ${DOCBUILD_DIR} -destination 'generic/platform=macOS'"
+    # The documentation is already transformed for static hosting in DOCBUILD_DIR
+    STATIC_DOCS_DIR="$DOCBUILD_DIR"
+    
+    if [ -d "$STATIC_DOCS_DIR" ] && [ -n "$(ls -A "$STATIC_DOCS_DIR" 2>/dev/null)" ]; then
+        echo "Found generated documentation in: $STATIC_DOCS_DIR"
     else
-        # Last resort: try opening the package directory as a project
-        echo "Attempting to build documentation directly from package..."
-        BUILD_CMD="xcodebuild -resolvePackageDependencies -packagePath ${REPO_ROOT} && xcodebuild docbuild -packagePath ${REPO_ROOT} -derivedDataPath ${DOCBUILD_DIR} -destination 'generic/platform=macOS'"
-    fi
-fi
-
-# Execute the build command
-if eval "$BUILD_CMD" 2>&1; then
-    echo -e "${GREEN}DocC documentation built successfully${NC}"
-    
-    # Find the .doccarchive
-    DOCS_ARCHIVE=$(find "$DOCBUILD_DIR" -name "*.doccarchive" -type d | head -1)
-    
-    if [ -z "$DOCS_ARCHIVE" ]; then
-        # Try alternative location
-        DOCS_ARCHIVE=$(find "$DOCBUILD_DIR" -name "*.doccarchive" -type d | head -1)
-    fi
-    
-    if [ -n "$DOCS_ARCHIVE" ] && [ -d "$DOCS_ARCHIVE" ]; then
-        echo "Found DocC archive: $DOCS_ARCHIVE"
-        
-        # Transform archive for static hosting
-        STATIC_DOCS_DIR="${REPO_ROOT}/.static-docs"
-        rm -rf "$STATIC_DOCS_DIR"
-        mkdir -p "$STATIC_DOCS_DIR"
-        
-        echo "Transforming archive for static hosting..."
-        if command -v docc >/dev/null 2>&1; then
-            docc process-archive transform-for-static-hosting \
-                "$DOCS_ARCHIVE" \
-                --output-path "$STATIC_DOCS_DIR" \
-                --hosting-base-path "/${PACKAGE_NAME,,}" || {
-                echo -e "${YELLOW}Warning: docc transform failed, using archive directly${NC}"
-                STATIC_DOCS_DIR="$DOCS_ARCHIVE"
-            }
-        else
-            echo -e "${YELLOW}Warning: docc command not found, using archive directly${NC}"
-            STATIC_DOCS_DIR="$DOCS_ARCHIVE"
-        fi
-    else
-        echo -e "${YELLOW}DocC archive not found, creating static fallback site${NC}"
+        echo -e "${YELLOW}Documentation directory is empty, creating static fallback site${NC}"
         STATIC_DOCS_DIR=""
     fi
 else
-    echo -e "${YELLOW}xcodebuild docbuild failed, creating static fallback site${NC}"
+    echo -e "${YELLOW}swift package generate-documentation failed, creating static fallback site${NC}"
     STATIC_DOCS_DIR=""
 fi
 

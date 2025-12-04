@@ -17,7 +17,8 @@ let package = Package(
             targets: ["DesignAlgorithmsKit"]),
     ],
     dependencies: [
-        // No external dependencies - pure Swift implementation
+        // Swift DocC Plugin for documentation generation
+        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
     ],
     targets: [
         .target(
