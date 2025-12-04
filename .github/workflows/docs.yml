@@ -34,63 +34,118 @@ jobs:
       
       - name: Generate DocC documentation
         run: |
-          # Generate documentation using swift package generate-documentation
-          # This creates a .doccarchive in DerivedData
-          swift package generate-documentation --target DesignAlgorithmsKit || {
-            echo "DocC generation failed, trying alternative method"
-            # Alternative: Use xcodebuild if available
-            swift package generate-xcodeproj 2>/dev/null || true
-            if [ -f "DesignAlgorithmsKit.xcodeproj/project.pbxproj" ]; then
-              xcodebuild docbuild \
-                -project DesignAlgorithmsKit.xcodeproj \
-                -scheme DesignAlgorithmsKit \
-                -destination 'platform=macOS' \
-                -derivedDataPath .build 2>&1 || echo "xcodebuild docbuild failed"
-            fi
-          }
+          # Generate documentation using swift package
+          # Note: swift package generate-documentation requires Swift 5.9+ and Xcode 15+
+          # The command creates a .doccarchive in DerivedData
+          swift package --version || echo "Swift package manager check"
+          
+          # Try to generate documentation
+          # If this fails, we'll create a simple static site
+          if swift package generate-documentation --target DesignAlgorithmsKit 2>&1; then
+            echo "DocC documentation generated successfully"
+          else
+            echo "DocC generation not available, creating static documentation site"
+          fi
           
           # Find documentation archive
-          # Swift package generate-documentation creates archives in ~/Library/Developer/Xcode/DerivedData
-          # or we can look in .build if using xcodebuild
+          # Swift package generate-documentation creates archives in DerivedData
           DOCS_ARCHIVE=""
+          DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData"
           
-          # Check .build first (xcodebuild location)
-          DOCS_ARCHIVE=$(find .build -name "*.doccarchive" -type d 2>/dev/null | head -1)
-          
-          # Check DerivedData (swift package generate-documentation location)
-          if [ -z "$DOCS_ARCHIVE" ]; then
-            DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData"
-            if [ -d "$DERIVED_DATA" ]; then
-              DOCS_ARCHIVE=$(find "$DERIVED_DATA" -name "*.doccarchive" -type d -mtime -1 2>/dev/null | head -1)
-            fi
+          if [ -d "$DERIVED_DATA" ]; then
+            # Find most recent .doccarchive
+            DOCS_ARCHIVE=$(find "$DERIVED_DATA" -name "*.doccarchive" -type d -mtime -1 2>/dev/null | head -1)
           fi
           
-          # Check current directory
+          # Check .build directory as fallback
           if [ -z "$DOCS_ARCHIVE" ]; then
-            DOCS_ARCHIVE=$(find . -name "*.doccarchive" -type d -not -path "./.build/*" 2>/dev/null | head -1)
+            DOCS_ARCHIVE=$(find .build -name "*.doccarchive" -type d 2>/dev/null | head -1)
           fi
           
-          if [ -z "$DOCS_ARCHIVE" ] || [ ! -d "$DOCS_ARCHIVE" ]; then
-            echo "Warning: Documentation archive not found"
-            echo "Creating minimal documentation structure for GitHub Pages"
+          if [ -n "$DOCS_ARCHIVE" ] && [ -d "$DOCS_ARCHIVE" ]; then
+            echo "Found documentation archive: $DOCS_ARCHIVE"
+            echo "archive_path=$DOCS_ARCHIVE" >> $GITHUB_OUTPUT
+          else
+            echo "Documentation archive not found, creating static site"
             mkdir -p docs
             cat > docs/index.html << 'EOF'
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DesignAlgorithmsKit Documentation</title>
-    <meta http-equiv="refresh" content="0; url=https://github.com/rickhohler/DesignAlgorithmsKit#readme">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            line-height: 1.6;
+            color: #24292e;
+        }
+        h1 { color: #0366d6; border-bottom: 2px solid #eaecef; padding-bottom: 10px; }
+        h2 { color: #24292e; margin-top: 30px; }
+        .links { margin: 30px 0; }
+        .links a {
+            display: inline-block;
+            margin: 10px 10px 10px 0;
+            padding: 12px 24px;
+            background: #0366d6;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        .links a:hover { background: #0256c2; }
+        ul { line-height: 1.8; }
+        code { background: #f6f8fa; padding: 2px 6px; border-radius: 3px; font-family: 'SF Mono', Monaco, monospace; }
+        .section { margin: 30px 0; }
+    </style>
 </head>
 <body>
-    <p>Redirecting to <a href="https://github.com/rickhohler/DesignAlgorithmsKit#readme">DesignAlgorithmsKit README</a></p>
+    <h1>DesignAlgorithmsKit</h1>
+    <p>A Swift package providing common design patterns and algorithms with protocols and base types for extensibility.</p>
+    
+    <div class="links">
+        <a href="https://github.com/rickhohler/DesignAlgorithmsKit#readme">View README</a>
+        <a href="https://github.com/rickhohler/DesignAlgorithmsKit">GitHub Repository</a>
+    </div>
+    
+    <div class="section">
+        <h2>Design Patterns</h2>
+        <ul>
+            <li><strong>Registry Pattern</strong> - <code>TypeRegistry</code> for centralized type registration</li>
+            <li><strong>Factory Pattern</strong> - <code>ObjectFactory</code> for object creation</li>
+            <li><strong>Builder Pattern</strong> - <code>BaseBuilder</code> for fluent API construction</li>
+            <li><strong>Singleton Pattern</strong> - <code>ThreadSafeSingleton</code> and <code>ActorSingleton</code></li>
+            <li><strong>Strategy Pattern</strong> - <code>Strategy</code> protocol and <code>StrategyContext</code></li>
+            <li><strong>Observer Pattern</strong> - <code>Observer</code> and <code>Observable</code> protocols</li>
+            <li><strong>Adapter Pattern</strong> - <code>Adapter</code> protocol</li>
+            <li><strong>Facade Pattern</strong> - <code>Facade</code> protocol</li>
+        </ul>
+    </div>
+    
+    <div class="section">
+        <h2>Algorithms</h2>
+        <ul>
+            <li><strong>Merkle Tree</strong> - Data structure for efficient data verification</li>
+            <li><strong>Bloom Filter</strong> - Probabilistic data structure for membership testing</li>
+            <li><strong>Counting Bloom Filter</strong> - Bloom filter variant supporting element removal</li>
+            <li><strong>Hash Algorithms</strong> - SHA256 and other hash implementations</li>
+        </ul>
+    </div>
+    
+    <div class="section">
+        <h2>Usage</h2>
+        <p>Add DesignAlgorithmsKit to your <code>Package.swift</code>:</p>
+        <pre style="background: #f6f8fa; padding: 15px; border-radius: 6px; overflow-x: auto;"><code>.package(url: "https://github.com/rickhohler/DesignAlgorithmsKit.git", from: "1.0.0")</code></pre>
+        <p><em>For detailed API documentation, see the README and source code comments.</em></p>
+    </div>
 </body>
 </html>
 EOF
             echo "archive_path=./docs" >> $GITHUB_OUTPUT
-            echo "Created placeholder documentation"
-          else
-            echo "Found documentation archive: $DOCS_ARCHIVE"
-            echo "archive_path=$DOCS_ARCHIVE" >> $GITHUB_OUTPUT
           fi
         id: generate-docs
         continue-on-error: true
