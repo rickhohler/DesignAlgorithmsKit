@@ -14,7 +14,10 @@ final class SingletonTests: XCTestCase {
     
     func testThreadSafeSingletonSingleInstance() {
         // Given - Using a unique class name to avoid static storage conflicts
-        class UniqueTestSingleton1: ThreadSafeSingleton {
+        // Each test method needs a completely unique singleton class
+        // The base class uses shared Static storage, so we need to ensure
+        // each test class is truly isolated
+        class IsolatedSingletonTest1: ThreadSafeSingleton {
             var value: String = "initial"
             
             private override init() {
@@ -22,29 +25,34 @@ final class SingletonTests: XCTestCase {
             }
             
             override class func createShared() -> Self {
-                // Use a unique static storage per class
-                struct StaticStorage {
-                    static var instance: UniqueTestSingleton1?
+                // Use class-specific static storage that's truly isolated
+                // This struct is unique to this specific class type
+                struct IsolatedStorage {
+                    static var instance: IsolatedSingletonTest1?
                 }
-                if StaticStorage.instance == nil {
-                    StaticStorage.instance = UniqueTestSingleton1()
+                if IsolatedStorage.instance == nil {
+                    IsolatedStorage.instance = IsolatedSingletonTest1()
                 }
-                return StaticStorage.instance! as! Self
+                return IsolatedStorage.instance! as! Self
             }
         }
         
-        // When
-        let instance1 = UniqueTestSingleton1.shared
-        let instance2 = UniqueTestSingleton1.shared
+        // When - Access shared instance multiple times
+        let instance1 = IsolatedSingletonTest1.shared
+        let instance2 = IsolatedSingletonTest1.shared
         
-        // Then
+        // Then - Should return the same instance
         XCTAssertTrue(instance1 === instance2, "Should return the same instance")
         XCTAssertEqual(instance1.value, "initial")
+        
+        // Verify it's the same object identity
+        instance1.value = "modified"
+        XCTAssertEqual(instance2.value, "modified", "Both references should point to same instance")
     }
     
     func testThreadSafeSingletonThreadSafety() {
-        // Given
-        class TestSingleton: ThreadSafeSingleton {
+        // Given - Use unique class name to avoid conflicts
+        class ThreadSafetyTestSingleton: ThreadSafeSingleton {
             var counter: Int = 0
             
             private override init() {
@@ -52,7 +60,13 @@ final class SingletonTests: XCTestCase {
             }
             
             override class func createShared() -> Self {
-                return TestSingleton() as! Self
+                struct StaticStorage {
+                    static var instance: ThreadSafetyTestSingleton?
+                }
+                if StaticStorage.instance == nil {
+                    StaticStorage.instance = ThreadSafetyTestSingleton()
+                }
+                return StaticStorage.instance! as! Self
             }
             
             func increment() {
@@ -66,7 +80,7 @@ final class SingletonTests: XCTestCase {
         
         for _ in 0..<10 {
             DispatchQueue.global().async {
-                let instance = TestSingleton.shared
+                let instance = ThreadSafetyTestSingleton.shared
                 instance.increment()
                 expectation.fulfill()
             }
@@ -75,14 +89,14 @@ final class SingletonTests: XCTestCase {
         waitForExpectations(timeout: 2.0)
         
         // Then - Should still be the same instance
-        let instance1 = TestSingleton.shared
-        let instance2 = TestSingleton.shared
+        let instance1 = ThreadSafetyTestSingleton.shared
+        let instance2 = ThreadSafetyTestSingleton.shared
         XCTAssertTrue(instance1 === instance2, "Should return the same instance across threads")
     }
     
     func testThreadSafeSingletonState() {
-        // Given
-        class TestSingleton: ThreadSafeSingleton {
+        // Given - Use unique class name to avoid conflicts
+        class StateTestSingleton: ThreadSafeSingleton {
             var state: String = "initial"
             
             private override init() {
@@ -90,22 +104,28 @@ final class SingletonTests: XCTestCase {
             }
             
             override class func createShared() -> Self {
-                return TestSingleton() as! Self
+                struct StaticStorage {
+                    static var instance: StateTestSingleton?
+                }
+                if StaticStorage.instance == nil {
+                    StaticStorage.instance = StateTestSingleton()
+                }
+                return StaticStorage.instance! as! Self
             }
         }
         
         // When
-        let instance = TestSingleton.shared
+        let instance = StateTestSingleton.shared
         instance.state = "modified"
         
         // Then
-        let instance2 = TestSingleton.shared
+        let instance2 = StateTestSingleton.shared
         XCTAssertEqual(instance2.state, "modified", "State should persist across accesses")
     }
     
     func testThreadSafeSingletonSubclass() {
-        // Given
-        class BaseSingleton: ThreadSafeSingleton {
+        // Given - Use unique class names to avoid conflicts
+        class SubclassTestBaseSingleton: ThreadSafeSingleton {
             var baseValue: String = "base"
             
             private override init() {
@@ -113,11 +133,17 @@ final class SingletonTests: XCTestCase {
             }
             
             override class func createShared() -> Self {
-                return BaseSingleton() as! Self
+                struct StaticStorage {
+                    static var instance: SubclassTestBaseSingleton?
+                }
+                if StaticStorage.instance == nil {
+                    StaticStorage.instance = SubclassTestBaseSingleton()
+                }
+                return StaticStorage.instance! as! Self
             }
         }
         
-        class DerivedSingleton: ThreadSafeSingleton {
+        class SubclassTestDerivedSingleton: ThreadSafeSingleton {
             var derivedValue: String = "derived"
             
             private override init() {
@@ -125,38 +151,50 @@ final class SingletonTests: XCTestCase {
             }
             
             override class func createShared() -> Self {
-                return DerivedSingleton() as! Self
+                struct StaticStorage {
+                    static var instance: SubclassTestDerivedSingleton?
+                }
+                if StaticStorage.instance == nil {
+                    StaticStorage.instance = SubclassTestDerivedSingleton()
+                }
+                return StaticStorage.instance! as! Self
             }
         }
         
         // When
-        let base = BaseSingleton.shared
-        let derived = DerivedSingleton.shared
+        let base = SubclassTestBaseSingleton.shared
+        let derived = SubclassTestDerivedSingleton.shared
         
         // Then
         XCTAssertNotNil(base)
         XCTAssertNotNil(derived)
-        XCTAssertTrue(type(of: base) == BaseSingleton.self)
-        XCTAssertTrue(type(of: derived) == DerivedSingleton.self)
+        XCTAssertTrue(type(of: base) == SubclassTestBaseSingleton.self)
+        XCTAssertTrue(type(of: derived) == SubclassTestDerivedSingleton.self)
     }
     
     // MARK: - Singleton Protocol Tests
     
     func testSingletonProtocol() {
-        // Given
-        class ProtocolSingleton: ThreadSafeSingleton, Singleton {
+        // Given - Use unique class name to avoid conflicts
+        class ProtocolTestSingleton: ThreadSafeSingleton, Singleton {
             private override init() {
                 super.init()
             }
             
             override class func createShared() -> Self {
-                return ProtocolSingleton() as! Self
+                struct StaticStorage {
+                    static var instance: ProtocolTestSingleton?
+                }
+                if StaticStorage.instance == nil {
+                    StaticStorage.instance = ProtocolTestSingleton()
+                }
+                return StaticStorage.instance! as! Self
             }
         }
         
         // When
-        let instance1 = ProtocolSingleton.shared
-        let instance2 = ProtocolSingleton.shared
+        let instance1 = ProtocolTestSingleton.shared
+        let instance2 = ProtocolTestSingleton.shared
         
         // Then
         XCTAssertTrue(instance1 === instance2, "Should conform to Singleton protocol")

@@ -39,6 +39,9 @@ open class ThreadSafeSingleton {
     /// Lock for thread-safe initialization
     private static let lock = NSLock()
     
+    /// Type-specific instance storage keyed by type identifier
+    private static var instances: [ObjectIdentifier: Any] = [:]
+    
     /// Initialize singleton (must be called from subclass)
     public init() {
         // Base initialization
@@ -55,16 +58,15 @@ open class ThreadSafeSingleton {
         lock.lock()
         defer { lock.unlock() }
         
-        // Use a static variable to store the instance
-        struct Static {
-            static var instance: Any?
+        let typeID = ObjectIdentifier(Self.self)
+        
+        if let existing = instances[typeID] as? Self {
+            return existing
         }
         
-        if Static.instance == nil {
-            Static.instance = createShared()
-        }
-        
-        return Static.instance as! Self
+        let newInstance = createShared()
+        instances[typeID] = newInstance
+        return newInstance
     }
 }
 
