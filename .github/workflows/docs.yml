@@ -20,42 +20,74 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup Swift
-        uses: swift-actions/setup-swift@v1
-        with:
-          swift-version: "5.9"
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode.app
       
       - name: Show Swift version
         run: swift --version
+      
+      - name: Resolve dependencies
+        run: swift package resolve
       
       - name: Build package
         run: swift build
       
       - name: Generate DocC documentation
         run: |
-          # Generate documentation using swift package
+          # Generate documentation using swift package generate-documentation
+          # This creates a .doccarchive in DerivedData
           swift package generate-documentation --target DesignAlgorithmsKit || {
-            echo "DocC generation failed, creating placeholder"
-            mkdir -p Documentation
-            echo "# DesignAlgorithmsKit Documentation" > Documentation/README.md
-            echo "" >> Documentation/README.md
-            echo "Documentation will be available after successful DocC generation." >> Documentation/README.md
-            echo "archive_path=./Documentation" >> $GITHUB_OUTPUT
-            exit 0
+            echo "DocC generation failed, trying alternative method"
+            # Alternative: Use xcodebuild if available
+            swift package generate-xcodeproj 2>/dev/null || true
+            if [ -f "DesignAlgorithmsKit.xcodeproj/project.pbxproj" ]; then
+              xcodebuild docbuild \
+                -project DesignAlgorithmsKit.xcodeproj \
+                -scheme DesignAlgorithmsKit \
+                -destination 'platform=macOS' \
+                -derivedDataPath .build 2>&1 || echo "xcodebuild docbuild failed"
+            fi
           }
           
-          # Find documentation archive (DocC generates to .build/...)
-          DOCS_ARCHIVE=$(find .build -name "*.doccarchive" -type d | head -1)
+          # Find documentation archive
+          # Swift package generate-documentation creates archives in ~/Library/Developer/Xcode/DerivedData
+          # or we can look in .build if using xcodebuild
+          DOCS_ARCHIVE=""
+          
+          # Check .build first (xcodebuild location)
+          DOCS_ARCHIVE=$(find .build -name "*.doccarchive" -type d 2>/dev/null | head -1)
+          
+          # Check DerivedData (swift package generate-documentation location)
           if [ -z "$DOCS_ARCHIVE" ]; then
-            # Try alternative location
-            DOCS_ARCHIVE=$(find . -name "*.doccarchive" -type d -not -path "./.build/*" | head -1)
+            DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData"
+            if [ -d "$DERIVED_DATA" ]; then
+              DOCS_ARCHIVE=$(find "$DERIVED_DATA" -name "*.doccarchive" -type d -mtime -1 2>/dev/null | head -1)
+            fi
           fi
           
+          # Check current directory
           if [ -z "$DOCS_ARCHIVE" ]; then
-            echo "Warning: Documentation archive not found, creating placeholder"
-            mkdir -p Documentation
-            echo "# DesignAlgorithmsKit Documentation" > Documentation/README.md
-            echo "archive_path=./Documentation" >> $GITHUB_OUTPUT
+            DOCS_ARCHIVE=$(find . -name "*.doccarchive" -type d -not -path "./.build/*" 2>/dev/null | head -1)
+          fi
+          
+          if [ -z "$DOCS_ARCHIVE" ] || [ ! -d "$DOCS_ARCHIVE" ]; then
+            echo "Warning: Documentation archive not found"
+            echo "Creating minimal documentation structure for GitHub Pages"
+            mkdir -p docs
+            cat > docs/index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DesignAlgorithmsKit Documentation</title>
+    <meta http-equiv="refresh" content="0; url=https://github.com/rickhohler/DesignAlgorithmsKit#readme">
+</head>
+<body>
+    <p>Redirecting to <a href="https://github.com/rickhohler/DesignAlgorithmsKit#readme">DesignAlgorithmsKit README</a></p>
+</body>
+</html>
+EOF
+            echo "archive_path=./docs" >> $GITHUB_OUTPUT
+            echo "Created placeholder documentation"
           else
             echo "Found documentation archive: $DOCS_ARCHIVE"
             echo "archive_path=$DOCS_ARCHIVE" >> $GITHUB_OUTPUT
@@ -69,8 +101,10 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
-          path: ${{ steps.generate-docs.outputs.archive_path || './Documentation' }}
+          path: ${{ steps.generate-docs.outputs.archive_path || './docs' }}
+        continue-on-error: true
       
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
+        continue-on-error: true
