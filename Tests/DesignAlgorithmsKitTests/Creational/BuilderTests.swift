@@ -21,15 +21,13 @@ final class BuilderTests: XCTestCase {
             private var property2: Int?
             
             func setProperty1(_ value: String) -> Self {
-                var newBuilder = self
-                newBuilder.property1 = value
-                return newBuilder
+                self.property1 = value
+                return self
             }
             
             func setProperty2(_ value: Int) -> Self {
-                var newBuilder = self
-                newBuilder.property2 = value
-                return newBuilder
+                self.property2 = value
+                return self
             }
             
             override func build() throws -> TestObject {
@@ -86,10 +84,8 @@ final class BuilderTests: XCTestCase {
             private var value: Int?
             
             func setValue(_ value: Int) -> Self {
-                let builder = self
-                var newBuilder = builder
-                newBuilder.value = value
-                return newBuilder
+                self.value = value
+                return self
             }
             
             func validate() throws {
