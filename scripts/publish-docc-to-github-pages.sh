@@ -73,24 +73,37 @@ mkdir -p "$DOCBUILD_DIR"
 
 # Build documentation using xcodebuild docbuild
 echo "Building documentation with xcodebuild..."
-# First, generate an Xcode project if it doesn't exist
-if [ ! -f "$REPO_ROOT/${PACKAGE_NAME}.xcodeproj/project.pbxproj" ]; then
-    echo "Generating Xcode project..."
-    cd "$REPO_ROOT"
+cd "$REPO_ROOT"
+
+# Resolve package dependencies first
+swift package resolve
+
+# Try to build documentation - for Swift packages, we need to open it as a package
+# First try with an Xcode project if it exists
+if [ -f "${PACKAGE_NAME}.xcodeproj/project.pbxproj" ]; then
+    echo "Using existing Xcode project..."
+    BUILD_CMD="xcodebuild docbuild -scheme ${PACKAGE_NAME} -derivedDataPath ${DOCBUILD_DIR} -destination 'generic/platform=macOS'"
+elif [ -f "${PACKAGE_NAME}.xcworkspace/contents.xcworkspacedata" ]; then
+    echo "Using existing Xcode workspace..."
+    BUILD_CMD="xcodebuild docbuild -workspace ${PACKAGE_NAME}.xcworkspace -scheme ${PACKAGE_NAME} -derivedDataPath ${DOCBUILD_DIR} -destination 'generic/platform=macOS'"
+else
+    echo "No Xcode project found, generating one..."
+    # Try to generate Xcode project (may not be available in newer Swift versions)
     swift package generate-xcodeproj 2>/dev/null || {
-        echo "Note: generate-xcodeproj may not be available, trying direct build..."
+        echo "Note: generate-xcodeproj not available, will try opening package directly..."
     }
+    
+    if [ -f "${PACKAGE_NAME}.xcodeproj/project.pbxproj" ]; then
+        BUILD_CMD="xcodebuild docbuild -scheme ${PACKAGE_NAME} -derivedDataPath ${DOCBUILD_DIR} -destination 'generic/platform=macOS'"
+    else
+        # Last resort: try opening the package directory as a project
+        echo "Attempting to build documentation directly from package..."
+        BUILD_CMD="xcodebuild -resolvePackageDependencies -packagePath ${REPO_ROOT} && xcodebuild docbuild -packagePath ${REPO_ROOT} -derivedDataPath ${DOCBUILD_DIR} -destination 'generic/platform=macOS'"
+    fi
 fi
 
-# Build documentation - try with scheme first, then with package
-if xcodebuild docbuild \
-    -scheme "$PACKAGE_NAME" \
-    -derivedDataPath "$DOCBUILD_DIR" \
-    -destination 'generic/platform=macOS' 2>&1 || \
-   xcodebuild docbuild \
-    -packagePath "$REPO_ROOT" \
-    -derivedDataPath "$DOCBUILD_DIR" \
-    -destination 'generic/platform=macOS' 2>&1; then
+# Execute the build command
+if eval "$BUILD_CMD" 2>&1; then
     echo -e "${GREEN}DocC documentation built successfully${NC}"
     
     # Find the .doccarchive
