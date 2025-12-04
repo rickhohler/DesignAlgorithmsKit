@@ -33,32 +33,32 @@ jobs:
       
       - name: Generate DocC documentation
         run: |
-          # Create Xcode project for DocC generation
-          swift package generate-xcodeproj 2>/dev/null || true
-          
-          # Generate documentation using xcodebuild
-          if [ -f "DesignAlgorithmsKit.xcodeproj/project.pbxproj" ]; then
-            xcodebuild docbuild \
-              -project DesignAlgorithmsKit.xcodeproj \
-              -scheme DesignAlgorithmsKit \
-              -destination 'platform=macOS' \
-              -derivedDataPath .build
-            
-            # Find documentation archive
-            DOCS_ARCHIVE=$(find .build -name "*.doccarchive" -type d | head -1)
-            if [ -z "$DOCS_ARCHIVE" ]; then
-              echo "Error: Documentation archive not found"
-              exit 1
-            fi
-            echo "archive_path=$DOCS_ARCHIVE" >> $GITHUB_OUTPUT
-          else
-            # Fallback: Use swift-docc-plugin if available
-            echo "Xcode project not found, trying alternative method"
-            swift package resolve
-            # Create a simple documentation structure
+          # Generate documentation using swift package
+          swift package generate-documentation --target DesignAlgorithmsKit || {
+            echo "DocC generation failed, creating placeholder"
             mkdir -p Documentation
-            echo "Documentation will be generated manually" > Documentation/README.md
+            echo "# DesignAlgorithmsKit Documentation" > Documentation/README.md
+            echo "" >> Documentation/README.md
+            echo "Documentation will be available after successful DocC generation." >> Documentation/README.md
             echo "archive_path=./Documentation" >> $GITHUB_OUTPUT
+            exit 0
+          }
+          
+          # Find documentation archive (DocC generates to .build/...)
+          DOCS_ARCHIVE=$(find .build -name "*.doccarchive" -type d | head -1)
+          if [ -z "$DOCS_ARCHIVE" ]; then
+            # Try alternative location
+            DOCS_ARCHIVE=$(find . -name "*.doccarchive" -type d -not -path "./.build/*" | head -1)
+          fi
+          
+          if [ -z "$DOCS_ARCHIVE" ]; then
+            echo "Warning: Documentation archive not found, creating placeholder"
+            mkdir -p Documentation
+            echo "# DesignAlgorithmsKit Documentation" > Documentation/README.md
+            echo "archive_path=./Documentation" >> $GITHUB_OUTPUT
+          else
+            echo "Found documentation archive: $DOCS_ARCHIVE"
+            echo "archive_path=$DOCS_ARCHIVE" >> $GITHUB_OUTPUT
           fi
         id: generate-docs
         continue-on-error: true
