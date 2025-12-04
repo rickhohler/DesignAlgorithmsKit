@@ -8,22 +8,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- N/A
+- Added comprehensive unit tests for Builder pattern (12 tests total)
+  - Test for BaseBuilder default implementation (notImplemented error)
+  - Tests for BuilderError localizedDescription for all error cases
+  - Test for fluent API chaining with multiple method calls
+  - Test for optional properties handling
+  - Test for multiple independent builder instances
+  - Test for ValidatingBuilderProtocol default implementation
+  - Comprehensive validation tests with multiple rules
+  - Test for error pattern matching
+  - Test for builder reuse scenarios
+- Added comprehensive unit tests to improve code coverage
+  - Added tests for Singleton createShared() path and init()
+  - Added tests for BaseStrategy and StrategyContext edge cases
+  - Added tests for Factory error handling, thread safety, and edge cases
+  - Added tests for Registry protocol method, default keys, and thread safety
+- Added tests for HashAlgorithm extension fallback behavior
+- Added test for HashAlgorithm string extension consistency
+- Added SingletonError enum for better error handling in Singleton pattern
 
 ### Changed
-- N/A
-
-### Deprecated
-- N/A
-
-### Removed
-- N/A
+- Refactored Singleton.createShared() to throw SingletonError instead of fatalError
+  - Makes the error path testable while maintaining fatalError for production use
+  - Improved Singleton function coverage from 50% to 80%
+- Refactored HashAlgorithm extension to improve testability
+  - Added documentation explaining UTF-8 conversion fallback behavior
+  - Documented fallback hash path as conditionally untestable
+- Improved overall code coverage:
+  - Regions: 87.31% → 87.75%
+  - Functions: 88.24% → 90.29%
+  - Lines: 90.91% → 91.38%
 
 ### Fixed
-- N/A
+- Fixed compiler warning in SingletonTests about 'is' test always being true
+- Fixed Builder pattern testability - improved coverage to 100% (from 66.67%)
+- Fixed test for StrategyContext with same strategy type
 
-### Security
-- N/A
+### Documentation
+- Added documentation explaining why fatalError path in Singleton.shared cannot be tested
+- Added documentation to HashAlgorithm fallback implementation explaining conditional testability
+- Improved code documentation for testability throughout codebase
 
 ## [1.0.2] - 2025-12-04
 
