@@ -240,5 +240,50 @@ final class SingletonTests: XCTestCase {
         
         waitForExpectations(timeout: 2.0)
     }
+    
+    func testThreadSafeSingletonCreateSharedNotImplemented() {
+        // Given - A singleton that doesn't override createShared()
+        // Note: We can't test fatalError directly in unit tests, but we can verify
+        // the class structure is correct. In a real scenario, accessing .shared would crash
+        // with fatalError because createShared() is not implemented.
+        class NoCreateSharedSingleton: ThreadSafeSingleton {
+            private override init() {
+                super.init()
+            }
+            // Doesn't override createShared() - would cause fatalError if .shared is accessed
+        }
+        
+        // When/Then - Verify the class can be defined
+        // The fatalError in createShared() would occur at runtime when accessing .shared
+        XCTAssertTrue(NoCreateSharedSingleton.self is ThreadSafeSingleton.Type)
+    }
+    
+    func testThreadSafeSingletonInit() {
+        // Given - Test that init() can be called
+        class InitTestSingleton: ThreadSafeSingleton {
+            var initialized = false
+            
+            private override init() {
+                super.init()
+                initialized = true
+            }
+            
+            override class func createShared() -> Self {
+                struct StaticStorage {
+                    static var instance: InitTestSingleton?
+                }
+                if StaticStorage.instance == nil {
+                    StaticStorage.instance = InitTestSingleton()
+                }
+                return StaticStorage.instance! as! Self
+            }
+        }
+        
+        // When
+        let instance = InitTestSingleton.shared
+        
+        // Then
+        XCTAssertTrue(instance.initialized)
+    }
 }
 

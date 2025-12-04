@@ -67,6 +67,58 @@ final class StrategyTests: XCTestCase {
         // Then
         XCTAssertEqual(context.getStrategy().strategyID, "strategy2")
     }
+    
+    func testBaseStrategy() {
+        // Given
+        let baseStrategy = BaseStrategy(strategyID: "base-test")
+        
+        // Then
+        XCTAssertEqual(baseStrategy.strategyID, "base-test")
+    }
+    
+    func testBaseStrategyInheritance() {
+        // Given
+        class CustomStrategy: BaseStrategy {
+            init() {
+                super.init(strategyID: "custom")
+            }
+        }
+        
+        // When
+        let strategy = CustomStrategy()
+        
+        // Then
+        XCTAssertEqual(strategy.strategyID, "custom")
+    }
+    
+    func testStrategyContextGetStrategy() {
+        // Given
+        struct TestStrategy: Strategy {
+            let strategyID = "test"
+        }
+        
+        let context = StrategyContext(strategy: TestStrategy())
+        
+        // When
+        let retrievedStrategy = context.getStrategy()
+        
+        // Then
+        XCTAssertEqual(retrievedStrategy.strategyID, "test")
+    }
+    
+    func testStrategyContextMultipleStrategies() {
+        // Given
+        struct TestStrategy: Strategy {
+            let strategyID: String
+        }
+        
+        // When
+        let context = StrategyContext(strategy: TestStrategy(strategyID: "strategy1"))
+        context.setStrategy(TestStrategy(strategyID: "strategy2"))
+        
+        // Then
+        XCTAssertEqual(context.getStrategy().strategyID, "strategy2")
+    }
 }
 
 // Extension to make strategies executable for testing
