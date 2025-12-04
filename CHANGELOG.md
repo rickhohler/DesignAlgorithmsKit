@@ -25,6 +25,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - N/A
 
+## [1.1.0] - 2025-12-04
+
+### Added
+- **Queue Processing Pattern** - Concurrent queue management with status tracking, progress monitoring, and retry support
+  - `QueueItem` protocol for items that can be processed in a queue
+  - `QueueProcessor` protocol for processing queue items
+  - `ProcessingQueue` actor for managing concurrent processing with configurable limits
+  - Features: status tracking (pending, processing, completed, failed), progress monitoring (0.0 to 1.0), retry support, pause/resume functionality, cancellation, deduplication
+  - Comprehensive unit tests (15 tests)
+- **Merging/Upsert Pattern** - Configurable merge strategies for conflict resolution
+  - `Mergeable` protocol for types that can be merged
+  - `MergeStrategy` enum with strategies: preferExisting, preferNew, combine, custom
+  - `Merger` protocol for merging items with configurable strategies
+  - `DefaultMerger` base class with default implementations
+  - Comprehensive unit tests (32 tests)
+- Added comprehensive unit tests for new patterns
+  - Queue Processing Pattern: 15 tests covering all features and edge cases
+  - Merging/Upsert Pattern: 32 tests covering all strategies, edge cases, and protocol conformance
+  - Total: 153 tests (was 123) ➕ +30 new tests
+
+### Changed
+- Updated README.md with usage examples for Queue Processing Pattern and Merging/Upsert Pattern
+- Improved code coverage:
+  - Overall: 96.15% lines (up from 96.06%)
+  - Queue.swift: 89.23% regions, 91.50% lines
+  - Merger.swift: 83.33% regions, 84.62% lines
+- Enhanced documentation with comprehensive examples for new patterns
+
+### Fixed
+- N/A
+
 ## [1.0.3] - 2025-12-04
 
 ### Added

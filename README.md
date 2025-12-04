@@ -33,6 +33,8 @@ All patterns and algorithms follow consistent implementation guidelines for main
 ### Behavioral Patterns
 - **Strategy Pattern** - Interchangeable algorithms
 - **Observer Pattern** - Event notification and subscription
+- **Queue Processing Pattern** - Concurrent queue management with status tracking, progress monitoring, and retry support
+- **Merging/Upsert Pattern** - Configurable merge strategies for conflict resolution
 - **Command Pattern** - Encapsulating requests as objects
 - **State Pattern** - Object behavior based on state
 - **Template Method Pattern** - Defining algorithm skeleton
@@ -130,6 +132,113 @@ subject.addObserver(observer)
 
 // Notify observers
 subject.notifyObservers(event: .somethingHappened)
+```
+
+### Queue Processing Pattern
+
+```swift
+import DesignAlgorithmsKit
+
+// Define your item type
+struct MyItem: QueueItem {
+    let id: UUID
+    var status: QueueItemStatus = .pending
+    var progress: Double = 0.0
+    let data: Data
+}
+
+// Define your processor
+struct MyProcessor: QueueProcessor {
+    typealias Item = MyItem
+    
+    func process(_ item: MyItem) async throws {
+        // Process the item
+        // Update progress if needed
+    }
+}
+
+// Create and use the queue
+let queue = ProcessingQueue<MyItem, MyProcessor>(
+    processor: MyProcessor(),
+    maxConcurrent: 3
+)
+
+// Add items
+let items = [MyItem(id: UUID(), data: data1), MyItem(id: UUID(), data: data2)]
+await queue.add(items)
+
+// Monitor progress
+let pending = await queue.pendingItems
+let processing = await queue.processingItems
+let completed = await queue.completedItems
+let failed = await queue.failedItems
+
+// Retry failed items
+if let failedItem = await queue.failedItems.first {
+    await queue.retry(id: failedItem.id)
+}
+
+// Pause/resume
+await queue.pause()
+await queue.resume()
+```
+
+### Merging/Upsert Pattern
+
+```swift
+import DesignAlgorithmsKit
+
+// Define your item type
+struct MyItem: Mergeable {
+    let id: UUID
+    var name: String
+    var metadata: [String: String]
+}
+
+// Create a merger
+class MyMerger: DefaultMerger<MyItem> {
+    var storage: [UUID: MyItem] = [:]
+    
+    override func findExisting(by id: UUID) async -> MyItem? {
+        return storage[id]
+    }
+    
+    override func upsert(_ item: MyItem, strategy: MergeStrategy) async throws -> MyItem {
+        if let existing = await findExisting(by: item.id) {
+            let merged = merge(existing: existing, with: item, strategy: strategy)
+            storage[item.id] = merged
+            return merged
+        } else {
+            storage[item.id] = item
+            return item
+        }
+    }
+}
+
+// Use the merger
+let merger = MyMerger()
+
+// Upsert with prefer existing strategy
+let item1 = MyItem(id: UUID(), name: "Item", metadata: ["key": "value"])
+let upserted1 = try await merger.upsert(item1, strategy: .preferExisting)
+
+// Upsert with prefer new strategy
+let item2 = MyItem(id: item1.id, name: "Updated", metadata: ["key": "new"])
+let upserted2 = try await merger.upsert(item2, strategy: .preferNew)
+
+// Upsert with custom merge strategy
+let customStrategy: MergeStrategy = .custom { existing, new in
+    let existingItem = existing as! MyItem
+    let newItem = new as! MyItem
+    var mergedMetadata = existingItem.metadata
+    mergedMetadata.merge(newItem.metadata) { _, new in new }
+    return MyItem(
+        id: existingItem.id,
+        name: newItem.name,
+        metadata: mergedMetadata
+    )
+}
+let upserted3 = try await merger.upsert(item2, strategy: customStrategy)
 ```
 
 ### Merkle Tree
