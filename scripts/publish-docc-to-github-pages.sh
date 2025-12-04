@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Script to generate DocC documentation and publish it to GitHub Pages
-# This script generates documentation using swift package generate-documentation
-# and publishes it to a GitHub Pages repository
+# This script generates documentation using xcodebuild docbuild
+# and publishes it to a GitHub Pages repository (rickhohler.github.io)
 
 set -e
 
@@ -63,30 +63,59 @@ echo ""
 # Change to repository root
 cd "$REPO_ROOT"
 
-# Generate DocC documentation
+# Generate DocC documentation using xcodebuild
 echo -e "${GREEN}Generating DocC documentation...${NC}"
-swift package --version || echo "Swift package manager check"
 
-# Try to generate documentation
-DOCS_ARCHIVE=""
-DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData"
+# Create a temporary directory for docbuild output
+DOCBUILD_DIR="${REPO_ROOT}/.docbuild"
+rm -rf "$DOCBUILD_DIR"
+mkdir -p "$DOCBUILD_DIR"
 
-if swift package generate-documentation --target "$PACKAGE_NAME" 2>&1; then
-    echo -e "${GREEN}DocC documentation generated successfully${NC}"
+# Build documentation using xcodebuild docbuild
+echo "Building documentation with xcodebuild..."
+# For Swift packages, we need to use -packagePath instead of -scheme
+if xcodebuild docbuild \
+    -packagePath "$REPO_ROOT" \
+    -derivedDataPath "$DOCBUILD_DIR" \
+    -destination 'generic/platform=macOS' 2>&1; then
+    echo -e "${GREEN}DocC documentation built successfully${NC}"
     
-    # Find documentation archive
-    if [ -d "$DERIVED_DATA" ]; then
-        # Find most recent .doccarchive
-        DOCS_ARCHIVE=$(find "$DERIVED_DATA" -name "*.doccarchive" -type d -mtime -1 2>/dev/null | head -1)
+    # Find the .doccarchive
+    DOCS_ARCHIVE=$(find "$DOCBUILD_DIR" -name "*.doccarchive" -type d | head -1)
+    
+    if [ -z "$DOCS_ARCHIVE" ]; then
+        # Try alternative location
+        DOCS_ARCHIVE=$(find "$DOCBUILD_DIR" -name "*.doccarchive" -type d | head -1)
     fi
     
-    # Check .build directory as fallback
-    if [ -z "$DOCS_ARCHIVE" ]; then
-        DOCS_ARCHIVE=$(find .build -name "*.doccarchive" -type d 2>/dev/null | head -1)
+    if [ -n "$DOCS_ARCHIVE" ] && [ -d "$DOCS_ARCHIVE" ]; then
+        echo "Found DocC archive: $DOCS_ARCHIVE"
+        
+        # Transform archive for static hosting
+        STATIC_DOCS_DIR="${REPO_ROOT}/.static-docs"
+        rm -rf "$STATIC_DOCS_DIR"
+        mkdir -p "$STATIC_DOCS_DIR"
+        
+        echo "Transforming archive for static hosting..."
+        if command -v docc >/dev/null 2>&1; then
+            docc process-archive transform-for-static-hosting \
+                "$DOCS_ARCHIVE" \
+                --output-path "$STATIC_DOCS_DIR" \
+                --hosting-base-path "/${PACKAGE_NAME,,}" || {
+                echo -e "${YELLOW}Warning: docc transform failed, using archive directly${NC}"
+                STATIC_DOCS_DIR="$DOCS_ARCHIVE"
+            }
+        else
+            echo -e "${YELLOW}Warning: docc command not found, using archive directly${NC}"
+            STATIC_DOCS_DIR="$DOCS_ARCHIVE"
+        fi
+    else
+        echo -e "${YELLOW}DocC archive not found, creating static fallback site${NC}"
+        STATIC_DOCS_DIR=""
     fi
 else
-    echo -e "${YELLOW}DocC generation not available, creating static documentation site${NC}"
-    DOCS_ARCHIVE=""
+    echo -e "${YELLOW}xcodebuild docbuild failed, creating static fallback site${NC}"
+    STATIC_DOCS_DIR=""
 fi
 
 # Clone or update the GitHub Pages repository
@@ -147,7 +176,7 @@ else
 fi
 
 # Determine the documentation directory
-# For Swift packages, we'll publish to a subdirectory like /DesignAlgorithmsKit/
+# For Swift packages, we'll publish to a subdirectory like /designalgorithmskit/
 DOCS_DIR="${PACKAGE_NAME,,}"  # Convert to lowercase
 mkdir -p "$DOCS_DIR"
 
@@ -155,23 +184,23 @@ echo "Using documentation directory: $DOCS_DIR"
 echo ""
 
 # Copy documentation to GitHub Pages repository
-if [ -n "$DOCS_ARCHIVE" ] && [ -d "$DOCS_ARCHIVE" ]; then
-    echo -e "${GREEN}Copying DocC archive to GitHub Pages...${NC}"
-    echo "Source: $DOCS_ARCHIVE"
+if [ -n "$STATIC_DOCS_DIR" ] && [ -d "$STATIC_DOCS_DIR" ]; then
+    echo -e "${GREEN}Copying DocC documentation to GitHub Pages...${NC}"
+    echo "Source: $STATIC_DOCS_DIR"
     echo "Destination: $CLONE_DIR/$DOCS_DIR"
     
     # Remove existing documentation
     rm -rf "$CLONE_DIR/$DOCS_DIR"/*
     
-    # Copy the entire .doccarchive contents
-    cp -R "$DOCS_ARCHIVE"/* "$CLONE_DIR/$DOCS_DIR/" || {
-        echo -e "${RED}Error: Failed to copy documentation archive${NC}"
+    # Copy the entire documentation contents
+    cp -R "$STATIC_DOCS_DIR"/* "$CLONE_DIR/$DOCS_DIR/" || {
+        echo -e "${RED}Error: Failed to copy documentation${NC}"
         exit 1
     }
     
     echo -e "${GREEN}Documentation copied successfully${NC}"
 else
-    echo -e "${YELLOW}DocC archive not found, creating static fallback site${NC}"
+    echo -e "${YELLOW}DocC documentation not found, creating static fallback site${NC}"
     # Create a simple static HTML site as fallback
     cat > "$CLONE_DIR/$DOCS_DIR/index.html" << 'EOF'
 <!DOCTYPE html>
@@ -277,3 +306,6 @@ else
     echo "Documentation will be available at: https://${GITHUB_USER}.github.io/${DOCS_DIR}/"
 fi
 
+# Cleanup
+cd "$REPO_ROOT"
+rm -rf "$DOCBUILD_DIR" "$STATIC_DOCS_DIR" 2>/dev/null || true
