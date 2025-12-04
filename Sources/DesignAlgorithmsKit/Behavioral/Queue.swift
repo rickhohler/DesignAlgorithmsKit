@@ -288,12 +288,17 @@ public actor ProcessingQueue<Item: QueueItem, Processor: QueueProcessor> where P
     /// Process a single item (internal method)
     private func processItem(_ item: Item) {
         let itemID = item.id
-        let task = Task {
+        let task = Task { [weak self] in
+            guard let self = self else { return }
             do {
                 // Update status to processing
+                // Note: await is required for actor isolation, even though updateItem is synchronous
+                // swiftlint:disable:next no_async_await_expression
                 await self.updateItem(id: itemID, status: .processing, progress: 0.0)
                 
                 // Get current item (may have been updated)
+                // Note: await is required for actor isolation when accessing actor-isolated property
+                // swiftlint:disable:next no_async_await_expression
                 let currentItem = await self.items.first(where: { $0.id == itemID })
                 guard let itemToProcess = currentItem else {
                     // Item was removed
@@ -304,6 +309,7 @@ public actor ProcessingQueue<Item: QueueItem, Processor: QueueProcessor> where P
                 try await processor.process(itemToProcess)
                 
                 // Mark as completed
+                // swiftlint:disable:next no_async_await_expression
                 await self.updateItem(id: itemID, status: .completed, progress: 1.0)
                 
                 // Continue processing queue
@@ -311,6 +317,7 @@ public actor ProcessingQueue<Item: QueueItem, Processor: QueueProcessor> where P
                 
             } catch {
                 // Mark as failed
+                // swiftlint:disable:next no_async_await_expression
                 await self.updateItem(id: itemID, status: .failed, progress: 0.0)
                 
                 // Continue processing queue
