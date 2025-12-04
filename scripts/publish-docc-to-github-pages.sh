@@ -224,6 +224,26 @@ if [ -n "$STATIC_DOCS_DIR" ] && [ -d "$STATIC_DOCS_DIR" ]; then
         exit 1
     }
     
+    # Create a simplified index.html that redirects to the documentation
+    echo -e "${GREEN}Creating simplified index.html...${NC}"
+    cat > "$CLONE_DIR/$DOCS_DIR/index.html" << EOF
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="0; url=/${DOCS_DIR}/documentation/${PACKAGE_NAME,,}/">
+    <title>${PACKAGE_NAME} Documentation</title>
+    <script>
+        window.location.href = "/${DOCS_DIR}/documentation/${PACKAGE_NAME,,}/";
+    </script>
+</head>
+<body>
+    <p>Redirecting to <a href="/${DOCS_DIR}/documentation/${PACKAGE_NAME,,}/">${PACKAGE_NAME} Documentation</a>...</p>
+</body>
+</html>
+EOF
+    
     echo -e "${GREEN}Documentation copied successfully${NC}"
 else
     echo -e "${YELLOW}DocC documentation not found, creating static fallback site${NC}"
