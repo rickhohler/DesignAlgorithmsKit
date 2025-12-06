@@ -62,8 +62,10 @@ public protocol Observer: AnyObject {
 /// observable.doSomething()
 /// ```
 open class BaseObservable: Observable {
+    #if !os(WASI) && !arch(wasm32)
     /// Lock for thread-safe access
     private let lock = NSLock()
+    #endif
     
     /// Weak references to observers
     private var observers: [WeakObserver] = []
@@ -71,8 +73,10 @@ open class BaseObservable: Observable {
     public init() {}
     
     public func addObserver(_ observer: any Observer) {
+        #if !os(WASI) && !arch(wasm32)
         lock.lock()
         defer { lock.unlock() }
+        #endif
         
         // Remove any nil weak references
         observers = observers.filter { $0.observer != nil }
@@ -84,15 +88,21 @@ open class BaseObservable: Observable {
     }
     
     public func removeObserver(_ observer: any Observer) {
+        #if !os(WASI) && !arch(wasm32)
         lock.lock()
         defer { lock.unlock() }
+        #endif
         observers.removeAll { $0.observer === observer }
     }
     
     public func notifyObservers(event: Any) {
+        #if !os(WASI) && !arch(wasm32)
         lock.lock()
         let currentObservers = observers.compactMap { $0.observer }
         lock.unlock()
+        #else
+        let currentObservers = observers.compactMap { $0.observer }
+        #endif
         
         for observer in currentObservers {
             observer.didReceiveNotification(from: self, event: event)

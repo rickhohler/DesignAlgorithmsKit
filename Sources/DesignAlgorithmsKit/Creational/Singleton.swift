@@ -48,8 +48,10 @@ public enum SingletonError: Error {
 /// MySingleton.shared.doSomething()
 /// ```
 open class ThreadSafeSingleton {
+    #if !os(WASI) && !arch(wasm32)
     /// Lock for thread-safe initialization
     private static let lock = NSLock()
+    #endif
     
     /// Type-specific instance storage keyed by type identifier
     private static var instances: [ObjectIdentifier: Any] = [:]
@@ -71,8 +73,10 @@ open class ThreadSafeSingleton {
     /// - Note: This will call `fatalError()` if `createShared()` is not implemented,
     ///   as this indicates a programming error that should fail fast.
     public static var shared: Self {
+        #if !os(WASI) && !arch(wasm32)
         lock.lock()
         defer { lock.unlock() }
+        #endif
         
         let typeID = ObjectIdentifier(Self.self)
         

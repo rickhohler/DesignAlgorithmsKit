@@ -32,21 +32,29 @@ public protocol FactoryProduct {
 /// ```
 public final class ObjectFactory: @unchecked Sendable {
     /// Shared singleton instance (lazy initialization)
+    #if !os(WASI) && !arch(wasm32)
     nonisolated(unsafe) private static var _shared: ObjectFactory?
     nonisolated private static let lock = NSLock()
+    #else
+    private static var _shared: ObjectFactory?
+    #endif
     
     /// Shared singleton instance
     public static var shared: ObjectFactory {
+        #if !os(WASI) && !arch(wasm32)
         lock.lock()
         defer { lock.unlock() }
+        #endif
         if _shared == nil {
             _shared = ObjectFactory()
         }
         return _shared!
     }
     
+    #if !os(WASI) && !arch(wasm32)
     /// Lock for thread-safe access
     private let lock = NSLock()
+    #endif
     
     /// Factory methods (type -> factory closure)
     private var factories: [String: (([String: Any]) throws -> Any)] = [:]
@@ -61,8 +69,10 @@ public final class ObjectFactory: @unchecked Sendable {
     ///   - factory: Factory closure that creates the object
     /// Thread-safe: Can be called concurrently
     public func register(type: String, factory: @escaping ([String: Any]) throws -> Any) {
+        #if !os(WASI) && !arch(wasm32)
         lock.lock()
         defer { lock.unlock() }
+        #endif
         factories[type] = factory
     }
     
@@ -70,8 +80,10 @@ public final class ObjectFactory: @unchecked Sendable {
     /// - Parameter type: The FactoryProduct type
     /// Thread-safe: Can be called concurrently
     public func register<T: FactoryProduct>(_ type: T.Type, key: String? = nil) {
+        #if !os(WASI) && !arch(wasm32)
         lock.lock()
         defer { lock.unlock() }
+        #endif
         let typeKey = key ?? String(describing: type)
         factories[typeKey] = { config in
             try T(configuration: config)
@@ -86,9 +98,13 @@ public final class ObjectFactory: @unchecked Sendable {
     /// - Throws: Error if factory not found or creation fails
     /// Thread-safe: Can be called concurrently
     public func create(type: String, configuration: [String: Any] = [:]) throws -> Any {
+        #if !os(WASI) && !arch(wasm32)
         lock.lock()
         let factory = factories[type]
         lock.unlock()
+        #else
+        let factory = factories[type]
+        #endif
         
         guard let factory = factory else {
             throw FactoryError.typeNotRegistered(type)
@@ -102,16 +118,20 @@ public final class ObjectFactory: @unchecked Sendable {
     /// - Returns: true if factory is registered
     /// Thread-safe: Can be called concurrently
     public func isRegistered(type: String) -> Bool {
+        #if !os(WASI) && !arch(wasm32)
         lock.lock()
         defer { lock.unlock() }
+        #endif
         return factories[type] != nil
     }
     
     /// Clear all registered factories (primarily for testing)
     /// Thread-safe: Can be called concurrently
     public func clear() {
+        #if !os(WASI) && !arch(wasm32)
         lock.lock()
         defer { lock.unlock() }
+        #endif
         factories.removeAll()
     }
 }

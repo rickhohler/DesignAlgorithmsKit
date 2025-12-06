@@ -17,14 +17,19 @@ let package = Package(
             targets: ["DesignAlgorithmsKit"]),
     ],
     dependencies: [
-        // Swift DocC Plugin for documentation generation
-        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
+        // No dependencies - keep it simple for WASM compatibility
     ],
     targets: [
         .target(
             name: "DesignAlgorithmsKit",
             dependencies: [],
-            path: "Sources/DesignAlgorithmsKit"
+            path: "Sources/DesignAlgorithmsKit",
+            exclude: [
+                // Exclude hash/crypto types for WASM builds (they use NSLock)
+                "Algorithms/DataStructures/BloomFilter.swift",
+                "Algorithms/DataStructures/MerkleTree.swift",
+                "Algorithms/Hashing/HashAlgorithm.swift"
+            ]
         ),
         .testTarget(
             name: "DesignAlgorithmsKitTests",

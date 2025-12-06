@@ -2,36 +2,62 @@
 //  DesignAlgorithmsKit.swift
 //  DesignAlgorithmsKit
 //
-//  Main entry point for DesignAlgorithmsKit
+//  A comprehensive collection of design patterns and algorithms in Swift
 //
 
 import Foundation
+
+// MARK: - Main Module
+
+/// DesignAlgorithmsKit provides a comprehensive collection of design patterns
+/// and algorithms implemented in Swift.
+///
+/// ## Features
+///
+/// - **Design Patterns**: Creational, Structural, and Behavioral patterns
+/// - **Data Structures**: Specialized data structures for various use cases
+/// - **Algorithms**: Common algorithms and utilities
+///
+/// ## Modules
+///
+/// ### Creational Patterns
+/// - Factory Pattern
+/// - Builder Pattern  
+/// - Singleton Pattern
+///
+/// ### Structural Patterns
+/// - Adapter Pattern
+/// - Facade Pattern
+///
+/// ### Behavioral Patterns
+/// - Observer Pattern
+/// - Strategy Pattern
+/// - Queue Processing Pattern
+/// - Merger Pattern
+///
+/// ### Data Structures (not available in WASM builds)
+/// - Bloom Filter (requires NSLock)
+/// - Merkle Tree (requires NSLock)
+///
+/// ### Core Utilities
+/// - Type Registry
+///
+/// ## Platform Support
+///
+/// - macOS 12.0+
+/// - iOS 15.0+
+/// - tvOS 15.0+
+/// - watchOS 8.0+
+/// - WASM (limited - excludes hash/crypto types that require NSLock)
+public struct DesignAlgorithmsKit {
+    /// Library version
+    public static let version = "1.2.0"
+}
 
 // Re-export all modules
 @_exported import struct Foundation.Data
 @_exported import struct Foundation.URL
 
-/// DesignAlgorithmsKit - Common design patterns and algorithms for Swift
-///
-/// This package provides implementations of classic design patterns (Gang of Four)
-/// and modern patterns commonly used in Swift development, as well as common algorithms
-/// and data structures.
-///
-/// ## Modules
-///
-/// - **Core**: Base protocols and types (Registry)
-/// - **Creational**: Creational design patterns (Singleton, Factory, Builder)
-/// - **Structural**: Structural design patterns (Facade, Adapter)
-/// - **Behavioral**: Behavioral design patterns (Strategy, Observer)
-/// - **Algorithms**: Algorithms and data structures (Merkle Tree, Hashing)
-/// - **Modern**: Modern patterns and extensions
-///
-/// ## Quick Start
-///
-/// ```swift
-/// import DesignAlgorithmsKit
-///
-/// // Use Registry Pattern
 /// TypeRegistry.shared.register(MyType.self)
 ///
 /// // Use Factory Pattern
