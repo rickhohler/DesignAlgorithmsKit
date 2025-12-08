@@ -50,7 +50,7 @@ All patterns and algorithms follow consistent implementation guidelines for main
 - **Merkle Tree** - Hash tree for efficient data verification
 - **Bloom Filter** - Probabilistic data structure for membership testing
 - **Counting Bloom Filter** - Bloom Filter variant that supports element removal
-- **Hash Algorithms** - SHA-256 and extensible hash algorithm protocol
+- **Hash Computation** - Unified cryptographic hash functions (SHA-256, SHA-1, MD5, CRC32)
 
 ## Requirements
 
@@ -288,6 +288,30 @@ countingFilter.insert("item1")
 countingFilter.remove("item1")
 ```
 
+### Hash Computation
+
+```swift
+import DesignAlgorithmsKit
+
+// Compute SHA256 hash
+let data = "Hello, World!".data(using: .utf8)!
+let hash = try HashComputation.computeHash(data: data, algorithm: .sha256)
+
+// Get hash as hex string
+let hexHash = try HashComputation.computeHashHex(data: data, algorithm: .sha256)
+// Result: "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f"
+
+// Use string algorithm names
+let sha1Hash = try HashComputation.computeHashHex(data: data, algorithm: "sha1")
+
+// Convenience Data extensions
+let quickHash = data.sha256Hex
+
+// Supported algorithms: SHA-256, SHA-1, MD5, CRC32
+let md5 = try HashComputation.computeHashHex(data: data, algorithm: .md5)
+let crc = HashComputation.computeCRC32(data: data)
+```
+
 ## Architecture
 
 DesignAlgorithmsKit is organized into modules:
@@ -298,7 +322,7 @@ DesignAlgorithmsKit is organized into modules:
 - **Behavioral** - Behavioral design patterns
 - **Algorithms** - Algorithms and data structures
   - **DataStructures** - Merkle Tree and other data structures
-  - **Hashing** - Hash algorithms and protocols
+  - **Cryptography** - Hash computation (SHA-256, SHA-1, MD5, CRC32)
 - **Modern** - Modern patterns and extensions
 
 ## Thread Safety
