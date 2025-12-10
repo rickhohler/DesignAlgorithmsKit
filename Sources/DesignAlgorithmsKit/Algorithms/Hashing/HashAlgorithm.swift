@@ -1,88 +1,99 @@
+// DesignAlgorithmsKit
+// Hash Algorithm Types
 //
-//  HashAlgorithm.swift
-//  DesignAlgorithmsKit
-//
-//  Hash Algorithm Protocol - Base protocol for hash algorithms
-//
+// Hash Algorithm Policy:
+// - SHA-256: Recommended default for new hash generation
+// - SHA-1: Legacy support for existing systems
+// - MD5: Read-only legacy support (validation against companion files, existing checksums)
+// - CRC32: Fast checksum for quick integrity checks
 
-#if !os(WASI)
 import Foundation
 
-#if canImport(CryptoKit)
-import CryptoKit
-#endif
-
-/// Protocol for hash algorithms
-public protocol HashAlgorithm {
-    /// Algorithm name
-    static var name: String { get }
+/// Hash algorithms supported for file and disk image hashing
+public enum HashAlgorithm: String, CaseIterable, Codable, Sendable {
+    /// SHA-256: Recommended default for new hash generation (cryptographically secure)
+    case sha256 = "sha256"
     
-    /// Hash data using this algorithm
-    /// - Parameter data: Data to hash
-    /// - Returns: Hash value as Data
-    static func hash(data: Data) -> Data
+    /// SHA-1: Legacy support for existing systems (deprecated but collision-resistant)
+    case sha1 = "sha1"
     
-    /// Hash a string using this algorithm
-    /// - Parameter string: String to hash
-    /// - Returns: Hash value as Data
-    static func hash(string: String) -> Data
-}
-
-extension HashAlgorithm {
-    /// Default implementation for string hashing
-    /// - Parameter string: String to hash
-    /// - Returns: Hash value as Data, or empty Data if UTF-8 conversion fails
-    /// - Note: UTF-8 conversion failure returns empty Data, which will hash to a valid hash value.
-    ///   This path is testable by creating strings that fail UTF-8 conversion (rare but possible).
-    public static func hash(string: String) -> Data {
-        guard let data = string.data(using: .utf8) else {
-            // UTF-8 conversion failed - return hash of empty data
-            // This is a valid fallback that ensures we always return a hash
-            return hash(data: Data())
+    /// MD5: Read-only legacy support for validation against companion files and existing checksums
+    /// ⚠️ Do not use for new hash generation - use SHA-256 instead
+    /// ✅ Supported for: reading companion checksum files (.md5, .md5sum), validating against existing MD5 hashes
+    case md5 = "md5"
+    
+    /// CRC32: Fast checksum for quick integrity checks (not cryptographic)
+    case crc32 = "crc32"
+    
+    public var displayName: String {
+        rawValue.uppercased()
+    }
+    
+    /// Whether this algorithm is recommended for new hash generation
+    public var isRecommendedForNewHashes: Bool {
+        switch self {
+        case .sha256:
+            return true
+        case .sha1, .md5, .crc32:
+            return false
         }
-        return hash(data: data)
-    }
-}
-
-/// SHA-256 hash algorithm
-public enum SHA256: HashAlgorithm {
-    public static let name = "SHA-256"
-    
-    public static func hash(data: Data) -> Data {
-        #if canImport(CryptoKit)
-        let digest = CryptoKit.SHA256.hash(data: data)
-        return Data(digest)
-        #else
-        // Fallback implementation
-        // In production, use CommonCrypto or another crypto library
-        return fallbackHash(data: data)
-        #endif
     }
     
-    #if !canImport(CryptoKit)
-    /// Fallback hash implementation (simple, not cryptographically secure)
-    /// For production use, import CryptoKit or CommonCrypto
-    /// - Note: This path is conditionally compiled and only available when CryptoKit is not available.
-    ///   It cannot be tested in environments where CryptoKit is available (like macOS/iOS test environments).
-    ///   The fallback implementation is intentionally simple and not cryptographically secure.
-    private static func fallbackHash(data: Data) -> Data {
-        var hash = Data(count: 32)
-        data.withUnsafeBytes { dataBytes in
-            hash.withUnsafeMutableBytes { hashBytes in
-                // Simple hash (NOT cryptographically secure)
-                // This is a placeholder - use CryptoKit in production
-                for i in 0..<32 {
-                    var value: UInt8 = 0
-                    for j in 0..<dataBytes.count {
-                        value ^= dataBytes[j] &+ UInt8(i)
-                    }
-                    hashBytes[i] = value
-                }
-            }
+    /// Whether this algorithm is suitable for read-only validation (companion files, existing checksums)
+    public var isSuitableForValidation: Bool {
+        // All algorithms can be used for validation
+        return true
+    }
+    
+    /// Hash size in bytes
+    public var hashSize: Int {
+        switch self {
+        case .crc32:
+            return 4
+        case .md5:
+            return 16
+        case .sha1:
+            return 20
+        case .sha256:
+            return 32
         }
-        return hash
     }
-    #endif
+    
+    /// Whether this algorithm is suitable for small files (< 1MB)
+    /// All algorithms are fast enough for small files, but SHA-256 is recommended
+    public var isSuitableForSmallFiles: Bool {
+        // All algorithms are suitable, but SHA-256 is recommended
+        return true
+    }
+    
+    /// Recommended algorithm for small files
+    public static var recommendedForSmallFiles: HashAlgorithm {
+        return .sha256
+    }
+    
+    /// Recommended algorithm for millions of files
+    /// SHA-256 is recommended up to 100M files (3.2 GB storage overhead)
+    /// For > 100M files, consider two-stage approach (CRC32 filter + SHA-256 verification)
+    public static var recommendedForMillionsOfFiles: HashAlgorithm {
+        return .sha256
+    }
+    
+    /// Storage overhead in MB for N files
+    public func storageOverheadMB(for fileCount: Int) -> Double {
+        return (Double(hashSize) * Double(fileCount)) / (1024.0 * 1024.0)
+    }
+    
+    /// Whether this algorithm is suitable for millions of files
+    /// SHA-256 is suitable up to ~100M files (3.2 GB storage)
+    /// CRC32 has high collision risk for millions of files
+    public var isSuitableForMillionsOfFiles: Bool {
+        switch self {
+        case .sha256, .sha1:
+            return true  // Secure, negligible collision risk
+        case .md5:
+            return true  // Negligible collision risk, but cryptographically broken
+        case .crc32:
+            return false  // High collision risk for millions of files
+        }
+    }
 }
-#endif
-
