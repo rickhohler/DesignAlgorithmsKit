@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - N/A
 
-## [1.1.1] - 2025-12-12
+## [1.4.0] - 2025-12-12
 
 ### Added
 - `Data` extensions for convenient SHA256 hashing (`sha256`, `sha256Hex`)
@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed compiler warnings in `MergerTests` regarding `Sendable` conformance and unnecessary `await`
 - Fixed type mismatch errors in `HashComputationTests`
+
+### Versioning Note
+- Versions 1.2.0, 1.2.1, 1.2.2, and 1.3.0 were released but not documented in this changelog.
 
 
 ## [1.1.0] - 2025-12-04
