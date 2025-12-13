@@ -140,3 +140,66 @@ public final class TypeRegistry: @unchecked Sendable {
     }
 }
 
+/// A thread-safe generic registry for storing values by key.
+///
+/// This class provides a base implementation for the Registry pattern using `ThreadSafe` storage.
+/// It is suitable for managing collections of objects, strategies, or specifications.
+///
+/// ## Usage
+/// ```swift
+/// class MyRegistry: Registry<String, MyObject> { ... }
+/// ```
+open class Registry<Key: Hashable, Value>: @unchecked Sendable {
+    /// Thread-safe storage
+    private let storage: ThreadSafe<[Key: Value]>
+    
+    /// Initialize registry
+    public init() {
+        self.storage = ThreadSafe([:])
+    }
+    
+    /// Register a value
+    /// - Parameters:
+    ///   - value: Value to register
+    ///   - key: Key to register under
+    open func register(_ value: Value, for key: Key) {
+        storage.write { $0[key] = value }
+    }
+    
+    /// Retrieve a value
+    /// - Parameter key: Key to lookup
+    /// - Returns: Value if found, nil otherwise
+    open func get(_ key: Key) -> Value? {
+        storage.read { $0[key] }
+    }
+    
+    /// Unregister a key
+    /// - Parameter key: Key to remove
+    open func unregister(_ key: Key) {
+        storage.write { $0.removeValue(forKey: key) }
+    }
+    
+    /// Get all values
+    /// - Returns: Array of all registered values
+    open func all() -> [Value] {
+        storage.read { Array($0.values) }
+    }
+    
+    /// Clear all registrations
+    open func removeAll() {
+        storage.write { $0.removeAll() }
+    }
+    
+    /// Lookup value (subscript support)
+    public subscript(key: Key) -> Value? {
+        get { get(key) }
+        set {
+            if let value = newValue {
+                register(value, for: key)
+            } else {
+                unregister(key)
+            }
+        }
+    }
+}
+
