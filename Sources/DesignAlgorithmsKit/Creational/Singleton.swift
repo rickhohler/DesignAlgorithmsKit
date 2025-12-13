@@ -50,7 +50,7 @@ public enum SingletonError: Error {
 open class ThreadSafeSingleton {
     #if !os(WASI) && !arch(wasm32)
     /// Lock for thread-safe initialization
-    private static let lock = NSLock()
+    private static let lock = NSRecursiveLock()
     #endif
     
     /// Type-specific instance storage keyed by type identifier
