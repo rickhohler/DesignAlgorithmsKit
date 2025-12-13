@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - N/A
 
+## [v1.4.1] - 2025-12-13
+
+### Added
+- `ThreadSafeArray` and `ThreadSafeDictionary`
+
+### Changed
+- Boosted unit test coverage across multiple patterns (Builder, Factory, Adapter, Facade, Observer, Strategy)
+- Added `AGENTS.md` release/tagging guideline documentation
+
 ## [v1.4.0] - 2025-12-12
 
 ### Added
