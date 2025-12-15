@@ -39,6 +39,8 @@ All patterns and algorithms follow consistent implementation guidelines for main
 - **State Pattern** - Object behavior based on state
 - **Template Method Pattern** - Defining algorithm skeleton
 - **Chain of Responsibility** - Passing requests along a chain
+- **Job Manager Pattern** - Orchestration of asynchronous tasks with status tracking
+- **Pipeline Pattern** - Type-erased async processing pipeline
 - **Iterator Pattern** - Traversing collections
 
 ### Modern Patterns
@@ -239,6 +241,47 @@ let customStrategy: MergeStrategy = .custom { existing, new in
     )
 }
 let upserted3 = try await merger.upsert(item2, strategy: customStrategy)
+```
+
+
+### Job Manager Pattern
+
+```swift
+import DesignAlgorithmsKit
+
+// Initialize JobManager
+let jobManager = JobManager(maxConcurrentJobs: 4)
+
+// Submit a job
+let jobID = jobManager.submit(description: "Heavy Processing") {
+    // Perform async work
+    try await Task.sleep(nanoseconds: 1 * 1_000_000_000)
+    return "Success"
+}
+
+// Check status (snapshot)
+if let snapshot = await jobManager.getJob(id: jobID) {
+    print("Status: \(snapshot.status)")
+}
+```
+
+### Pipeline Pattern (Dynamic Async)
+
+```swift
+import DesignAlgorithmsKit
+
+// Create a dynamic pipeline
+let pipeline = DynamicAsyncPipeline()
+
+// Add generic stages
+pipeline.append(AnyAsyncPipelineStage(process: { input in
+    guard let text = input as? String else { throw PipelineError.invalidInputType(expected: "String", actual: "Unknown") }
+    return text.uppercased()
+}))
+
+// Execute
+let result = try await pipeline.execute(input: "hello world")
+// Result: "HELLO WORLD"
 ```
 
 ### Merkle Tree
