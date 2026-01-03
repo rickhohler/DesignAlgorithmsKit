@@ -25,12 +25,18 @@ let package = Package(
             exclude: [
                 // Exclude hash/crypto types for WASM builds (they use NSLock)
                 "Algorithms/WASMGuard.swift"
+            ],
+            linkerSettings: [
+                .linkedLibrary("z")
             ]
         ),
         .testTarget(
             name: "DesignAlgorithmsKitTests",
             dependencies: ["DesignAlgorithmsKit"],
-            path: "Tests/DesignAlgorithmsKitTests"
+            path: "Tests/DesignAlgorithmsKitTests",
+            linkerSettings: [
+                .linkedLibrary("z")
+            ]
         ),
     ]
 )
